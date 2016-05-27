@@ -81,12 +81,12 @@ api(lib.tdb_get_trail_length, [tdb_cursor], c_uint64)
 
 
 def uuid_hex(uuid):
-    if isinstance(uuid, basestring):
+    if isinstance(uuid, str):
         return uuid
     return string_at(uuid, 16).encode('hex')
 
 def uuid_raw(uuid):
-    if isinstance(uuid, basestring):
+    if isinstance(uuid, str):
         return (c_ubyte * 16).from_buffer_copy(uuid.decode('hex'))
     return uuid
 
@@ -99,7 +99,7 @@ def nullterm(strs, size):
 
 def tdb_item_is32(item): return not (item & 128)
 def tdb_item_field32(item): return item & 127
-def tdb_item_val32(item): return (item >> 8) & 4294967295L # UINT32_MAX
+def tdb_item_val32(item): return (item >> 8) & 4294967295 # UINT32_MAX
 
 def tdb_item_field(item):
     """Return field-part of an item."""
@@ -207,7 +207,7 @@ class TrailDBCursor(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         """Return the next event in the trail."""
         event = lib.tdb_cursor_next(self.cursor)
         if not event:
@@ -246,7 +246,7 @@ class TrailDB(object):
         self.num_trails = lib.tdb_num_trails(db)
         self.num_events = lib.tdb_num_events(db)
         self.num_fields = lib.tdb_num_fields(db)
-        self.fields = [lib.tdb_get_field_name(db, i) for i in xrange(self.num_fields)]
+        self.fields = [lib.tdb_get_field_name(db, i) for i in range(self.num_fields)]
         self._event_cls = namedtuple('event', self.fields, rename=True)
         self._uint64_ptr = pointer(c_uint64())
 
@@ -264,7 +264,7 @@ class TrailDB(object):
 
     def __getitem__(self, uuidish):
         """Return a cursor for the given UUID or Trail ID."""
-        if isinstance(uuidish, basestring):
+        if isinstance(uuidish, str):
             return self.trail(self.get_trail_id(uuidish))
         return self.trail(uuidish)
 
@@ -276,7 +276,7 @@ class TrailDB(object):
         """Iterate over all trails in this TrailDB.
 
         Keyword arguments are passed to trail()."""
-        for i in xrange(len(self)):
+        for i in range(len(self)):
             yield self.get_uuid(i), self.trail(i, **kwds)
 
     def trail(self, i, parsetime=False, rawitems=False, only_timestamp=False):
@@ -300,14 +300,14 @@ class TrailDB(object):
 
     def field(self, fieldish):
         """Return a field ID given a field name."""
-        if isinstance(fieldish, basestring):
+        if isinstance(fieldish, str):
             return self.fields.index(fieldish)
         return fieldish
 
     def lexicon(self, fieldish):
         """Return an iterator over values of the given field ID or field name."""
         field = self.field(fieldish)
-        return (self.get_value(field, i) for i in xrange(1, self.lexicon_size(field)))
+        return (self.get_value(field, i) for i in range(1, self.lexicon_size(field)))
 
     def lexicon_size(self, fieldish):
         """Return the number of distinct values in the given
