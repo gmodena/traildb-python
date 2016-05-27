@@ -134,7 +134,7 @@ class TestCons(unittest.TestCase):
 
         self.assertIsInstance(timestamps[0], datetime.datetime)
         self.assertEqual([time for time, _ in events], timestamps)
-        self.assertEquals(tdb.time_range(True),
+        self.assertEqual(tdb.time_range(True),
                           (events[0][0], events[-1][0]))
 
     def test_binarydata(self):
@@ -185,26 +185,26 @@ class TestCons(unittest.TestCase):
         tdb = cons.finalize()
 
         cursor = tdb.trail(0, rawitems=True)
-        event = cursor.next()
+        event = next(cursor)
         self.assertEqual(tdb.get_item_value(event.field1), 'a')
         self.assertEqual(tdb.get_item_value(event.field2), 'x' * 2048)
         self.assertEqual(tdb.get_item('field1', 'a'), event.field1)
         self.assertEqual(tdb.get_item('field2', 'x' * 2048), event.field2)
-        event = cursor.next()
+        event = next(cursor)
         self.assertEqual(tdb.get_item_value(event.field1), 'b')
         self.assertEqual(tdb.get_item_value(event.field2), 'y' * 2048)
         self.assertEqual(tdb.get_item('field1', 'b'), event.field1)
         self.assertEqual(tdb.get_item('field2', 'y' * 2048), event.field2)
 
         cursor = tdb.trail(0, rawitems=True)
-        event = cursor.next()
+        event = next(cursor)
         field = tdb_item_field(event.field1)
         val = tdb_item_val(event.field1)
         self.assertEqual(tdb.get_value(field, val), 'a')
         field = tdb_item_field(event.field2)
         val = tdb_item_val(event.field2)
         self.assertEqual(tdb.get_value(field, val), 'x' * 2048)
-        event = cursor.next()
+        event = next(cursor)
         field = tdb_item_field(event.field1)
         val = tdb_item_val(event.field1)
         self.assertEqual(tdb.get_value(field, val), 'b')
