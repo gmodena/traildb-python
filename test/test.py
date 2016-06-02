@@ -145,9 +145,8 @@ class TestCons(unittest.TestCase):
         cons.add(uuid, 123, [binary])
         tdb = cons.finalize()
 
-        # Fails when '\x00\x01\x02\x00ÿ\x00' != '\x00\x01\x02\x00ÿ\x00ÿ'
-        # is true
-        # self.assertEqual(list(tdb[0])[0].field1, binary)
+
+        self.assertEqual(list(tdb[0])[0].field1, binary)
 
     def test_cons(self):
         uuid = '12345678123456781234567812345678'
