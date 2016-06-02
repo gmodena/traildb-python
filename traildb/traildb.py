@@ -1,6 +1,8 @@
 import os
 import sys
 
+from codecs import encode, decode
+
 from collections import namedtuple, defaultdict
 from collections import Mapping
 from ctypes import c_char, c_char_p, c_ubyte, c_int, c_void_p
@@ -83,11 +85,11 @@ api(lib.tdb_get_trail_length, [tdb_cursor], c_uint64)
 def uuid_hex(uuid):
     if isinstance(uuid, str):
         return uuid
-    return string_at(uuid, 16).encode('hex')
+    return decode(encode(string_at(uuid, 16), 'hex'))
 
 def uuid_raw(uuid):
     if isinstance(uuid, str):
-        return (c_ubyte * 16).from_buffer_copy(uuid.decode('hex'))
+        return (c_ubyte * 16).from_buffer_copy(decode(uuid, 'hex'))
     return uuid
 
 def nullterm(strs, size):
@@ -135,7 +137,7 @@ class TrailDBConstructor(object):
         ofield_names = (c_char_p * n)(*[bytes(name, 'utf-8') for name in ofields])
 
         self._cons = lib.tdb_cons_init()
-        if lib.tdb_cons_open(self._cons, path, ofield_names, n) != 0:
+        if lib.tdb_cons_open(self._cons, bytes(path, 'utf-8'), ofield_names, n) != 0:
             raise TrailDBError("Cannot open constructor")
 
         self.path = path
@@ -155,8 +157,8 @@ class TrailDBConstructor(object):
         if isinstance(tstamp, datetime):
             tstamp = int(time.mktime(tstamp.timetuple()))
         n = len(self.ofields)
-        value_array = (c_char_p * n)(*values)
-        value_lengths = (c_uint64 * n)(*[len(v) for v in values])
+        value_array = (c_char_p * n)(*[bytes(v, 'utf-8') for v in values])
+        value_lengths = (c_uint64 * n)(*[len(v) for v in values])   
         f = lib.tdb_cons_add(self._cons, uuid_raw(uuid), tstamp, value_array,
                              value_lengths)
         if f:
@@ -239,7 +241,7 @@ class TrailDB(object):
     def __init__(self, path):
         """Open a TrailDB at path."""
         self._db = db = lib.tdb_init()
-        res = lib.tdb_open(self._db, path)
+        res = lib.tdb_open(self._db, bytes(path, 'utf-8'))
         if res != 0:
             raise TrailDBError("Could not open %s, error code %d" % (path, res))
 
@@ -247,6 +249,7 @@ class TrailDB(object):
         self.num_events = lib.tdb_num_events(db)
         self.num_fields = lib.tdb_num_fields(db)
         self.fields = [lib.tdb_get_field_name(db, i) for i in range(self.num_fields)]
+        self.fields = list(map(lambda x: x.decode('utf-8'), self.fields))
         self._event_cls = namedtuple('event', self.fields, rename=True)
         self._uint64_ptr = pointer(c_uint64())
 
@@ -322,7 +325,7 @@ class TrailDB(object):
         """Return the item corresponding to a field ID or
         a field name and a string value."""
         field = self.field(fieldish)
-        item = lib.tdb_get_item(self._db, field, value, len(value))
+        item = lib.tdb_get_item(self._db, field, bytes(value, 'utf-8'), len(value))
         if not item:
             raise TrailDBError("No such value: '%s'" % value)
         return item
@@ -332,7 +335,11 @@ class TrailDB(object):
         value = lib.tdb_get_item_value(self._db, item, self._uint64_ptr)
         if value is None:
             raise TrailDBError("Error reading value, error: %s" % lib.tdb_error(self._db))
-        return value[0:self._uint64_ptr.contents.value]
+        v = value[0:self._uint64_ptr.contents.value]
+        if isinstance(v, bytes):
+            return v.decode("utf-8")
+
+        return v
 
     def get_value(self, fieldish, val):
         """Return the string value corresponding to a field ID or
@@ -341,7 +348,10 @@ class TrailDB(object):
         value = lib.tdb_get_value(self._db, field, val, self._uint64_ptr)
         if value is None:
             raise TrailDBError("Error reading value, error: %s" % lib.tdb_error(self._db))
-        return value[0:self._uint64_ptr.contents.value]
+        v = value[0:self._uint64_ptr.contents.value]
+        if isinstance(v, bytes):
+            return v.decode('utf-8')
+        return v
 
     def get_uuid(self, trail_id, raw=False):
         """Return UUID given a Trail ID."""
@@ -358,6 +368,7 @@ class TrailDB(object):
         ret = lib.tdb_get_trail_id(self._db, uuid_raw(uuid), self._uint64_ptr)
         if ret:
             raise IndexError("UUID '%s' not found" % uuid)
+
         return self._uint64_ptr.contents.value
 
     def time_range(self, parsetime=False):
@@ -377,5 +388,4 @@ class TrailDB(object):
 
     def max_timestamp(self):
         """Return the maximum time stamp of this TrailDB."""
-        return lib.tdb_max_timestamp(self._db)
-
+        return lib.tdb_max_timestamp(self._db)  
