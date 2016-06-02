@@ -13,4 +13,4 @@ for i in range(3):
 cons.finalize()
 
 for uuid, trail in TrailDB('tiny').trails():
-    print uuid, list(trail)
+    print(uuid, list(trail))
